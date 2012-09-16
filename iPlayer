@@ -1,0 +1,43 @@
+#!/usr/bin/env ruby
+require 'fileutils'
+def search_iplayer(str)
+  `get_iplayer #{str.inspect}`
+end
+
+def get_iplayer(str)
+  `get_iplayer -g #{str.inspect}`
+end
+
+def zenity_entry(msg)
+  `zenity --entry --text=#{msg.inspect}`.strip
+end
+
+def zenity_info(msg)
+  `zenity --info --text=#{msg.inspect}`.strip
+end
+
+def zenity_options(msg, list)
+  list = list.lines.select {|l| l =~ /^[0-9]/}.join
+  `echo #{list.inspect} | zenity --list --text=#{msg.inspect} --column "filename" --separator="\n"`.strip
+end
+
+def check_and_quit(q)
+  if q.empty?
+    zenity_info("Nothin' chosen - exiting...")
+    exit
+  end
+end
+
+DOWNLOAD_DIR = "#{ENV['HOME']}/Downloads/iPlayer"
+q = zenity_entry("What would you like to download? Enter a search term, e.g. QI")
+check_and_quit q
+chosen = zenity_options("Please pick an option", search_iplayer(q))
+check_and_quit chosen
+
+
+FileUtils.chdir DOWNLOAD_DIR do 
+  zenity_info "I'm downloading your program. Do not shut down your machine."
+  get_iplayer chosen[/^[0-9]+/, 0]
+  zenity_info "Finished downloading: #{chosen}"
+  `nautilus #{DOWNLOAD_DIR.inspect}`
+end
