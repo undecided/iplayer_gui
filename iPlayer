@@ -1,17 +1,30 @@
 #!/usr/bin/env ruby
 require 'fileutils'
 require File.join(File.dirname(__FILE__), "get_iplayer_model")
+
+def bashify(msg)
+  msg.gsub(/"/, '\\\'').gsub(/[^0-9a-zA-Z]/, '\\ ')
+end
+
 def zenity_entry(msg)
-  `zenity --entry --text=#{msg.inspect}`.strip
+  msg = bashify msg
+  `zenity --entry --text="#{msg}"`.strip
 end
 
 def zenity_info(msg)
-  `zenity --info --text=#{msg.inspect}`.strip
+  msg = bashify msg
+  `zenity --info --text="#{msg}"`.strip
 end
 
 def zenity_options(msg, list)
+  msg = bashify msg
   list = list.lines.select {|l| l =~ /^[0-9]/}.join
-  `echo #{list.inspect} | zenity --list --text=#{msg.inspect} --column "filename" --separator="\n"`.strip
+  `echo #{list.inspect} | zenity --list --text="#{msg}" --column "filename" --separator="\n"`.strip
+end
+
+def zenity_progress(msg)
+  msg = bashify msg
+  `cat /dev/zero | zenity --progress --no-cancel --pulsate --text="#{msg}"`
 end
 
 def check_and_quit(q)
@@ -29,8 +42,12 @@ check_and_quit chosen
 
 
 FileUtils.chdir DOWNLOAD_DIR do 
-  t = Thread.new { zenity_info "I'm downloading your program. Do not shut down your machine." }
+  msg = Thread.new { zenity_progress "Downloading: #{chosen}" }
+
   IPlayer.get chosen[/^[0-9]+/, 0]
+
+  msg.kill
+  msg.join
   zenity_info "Finished downloading: #{chosen}"
   `nautilus #{DOWNLOAD_DIR.inspect}`
 end
